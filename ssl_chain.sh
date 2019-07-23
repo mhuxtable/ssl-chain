@@ -2,17 +2,21 @@
 
 chain_pem="${1}"
 
-if [[ ! -f "${chain_pem}" ]]; then
+if [[ "x${chain_pem}" = "x-" ]]; then
+    chain_pem=/dev/stdin
+elif [[ ! -f "${chain_pem}" ]]; then
     echo "Usage: $0 BASE64_CERTIFICATE_CHAIN_FILE" >&2
     exit 1
 fi
 
-if ! openssl x509 -in "${chain_pem}" -noout 2>/dev/null ; then
+CERT=$(cat "${chain_pem}")
+
+if ! (echo "$CERT" | openssl x509 -noout 2>/dev/null) ; then
     echo "${chain_pem} is not a certificate" >&2
     exit 1
 fi
 
-awk -F'\n' '
+echo "$CERT" | awk -F'\n' '
         BEGIN {
             showcert = "openssl x509 -noout -subject -issuer"
         }
@@ -29,7 +33,7 @@ awk -F'\n' '
             close(showcert)
             ind ++
         }
-    ' "${chain_pem}"
+    '
 
 echo
-openssl verify -untrusted "${chain_pem}" "${chain_pem}"
+openssl verify -untrusted <(echo "$CERT") <(echo "$CERT")
